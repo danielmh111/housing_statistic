@@ -1,0 +1,15 @@
+[project]
+name = "housing-statistic"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = ["pandas>=3.0.0", "polars>=1.37.1", "project-paths>=1.1.1"]
+
+[tool.project-paths]
+data = "./data"
+connectivity = "./data/connectivity_metrics_2025.csv"
+overcrowding = "./data/lsoa_overcrowding.csv"
+broadband = "./data/bba_all22.csv"
+lsoa_lookup = "./data/lsoa_lookup.csv"
+postcode_lookup = "./data/PCD_OA_LSOA_MSOA_LAD_AUG19_UK_LU.csv"
