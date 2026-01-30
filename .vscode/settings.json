@@ -7,6 +7,9 @@
         "editor.codeActionsOnSave": {
             "source.organizeImports.ruff": "always",
             "source.unusedImports": "never"
-        }
+        },
+        "editor.rulers": [
+            100
+        ]
     }
 }

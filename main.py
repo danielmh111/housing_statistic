@@ -1,6 +1,6 @@
-from project_paths import paths
 import polars as pl
 import polars.selectors as cs
+from project_paths import paths
 
 OVERCROWDING_FILE = paths.overcrowding
 CONNECTIVITY_FILE = paths.connectivity
@@ -10,7 +10,6 @@ HOMELESSNESS_FILE = ...
 BROADBAND_FILE = paths.broadband
 LSOA_LOOKUP = paths.lsoa_lookup
 POSTCODE_LOOKUP = paths.postcode_lookup
-
 
 
 def main():
@@ -27,10 +26,26 @@ def main():
         left_on="lsoa_code",
         right_on="LSOA21CD",
     ).select(
-        pl.exclude(["lsoa_name", "msoa_code", "ward_code", "local_authority_code",]),
-        pl.exclude(["lsoa_code", "lsoa_name", "msoa_code", "ward_code", "local_authority_code",]).rank(descending=True).name.suffix("_rank"),
+        pl.exclude(
+            [
+                "lsoa_name",
+                "msoa_code",
+                "ward_code",
+                "local_authority_code",
+            ]
+        ),
+        pl.exclude(
+            [
+                "lsoa_code",
+                "lsoa_name",
+                "msoa_code",
+                "ward_code",
+                "local_authority_code",
+            ]
+        )
+        .rank(descending=True)
+        .name.suffix("_rank"),
     )
-
 
     overcrowding_joined_df = lsoa_lookup_df.join(
         other=overcrowding_df,
@@ -43,13 +58,10 @@ def main():
         postcode_lookup_df.join(
             other=broadband_df, how="inner", left_on="oa11cd", right_on="oa11cd"
         )
-        .join(
-            other=lsoa_lookup_df, how="inner", left_on="lsoa11nm", right_on="lsoa_name"
-        )
-        .group_by("lsoa_code").agg(cs.starts_with("bba").mean().name.suffix("_mean"))
-        .select(
-            cs.all(), cs.starts_with("bba").rank().name.suffix("_rank")
-        )
+        .join(other=lsoa_lookup_df, how="inner", left_on="lsoa11nm", right_on="lsoa_name")
+        .group_by("lsoa_code")
+        .agg(cs.starts_with("bba").mean().name.suffix("_mean"))
+        .select(cs.all(), cs.starts_with("bba").rank().name.suffix("_rank"))
     )
 
     print("connectivity df")
@@ -77,9 +89,9 @@ if __name__ == "__main__":
 #     overcrowding_lsoa_col = ... # geography code
 
 #     # filter the input data to just bristol
-# pl.col(    conn_bristol = ).mean().over(pl.col("lsoa_code")).alias()filter_to_bristol(connectivity_df"," 
+# pl.col(    conn_bristol = ).mean().over(pl.col("lsoa_code")).alias()filter_to_bristol(connectivity_df","
 # connectivity_lsoa_col)
-# pl.col(    overcrowd_bristol = ).mean().over(pl.col("lsoa_code")).alias()filter_to_bristol(overcrowding_df"," 
+# pl.col(    overcrowd_bristol = ).mean().over(pl.col("lsoa_code")).alias()filter_to_bristol(overcrowding_df","
 # overcrowding_lsoa_col)
 
 #     # For connectivity

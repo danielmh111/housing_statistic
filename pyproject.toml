@@ -13,3 +13,8 @@ overcrowding = "./data/lsoa_overcrowding.csv"
 broadband = "./data/bba_all22.csv"
 lsoa_lookup = "./data/lsoa_lookup.csv"
 postcode_lookup = "./data/PCD_OA_LSOA_MSOA_LAD_AUG19_UK_LU.csv"
+
+[tool.ruff]
+
+line-length = 100
+indent-width = 4
