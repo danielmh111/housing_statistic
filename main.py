@@ -13,12 +13,12 @@ POSTCODE_LOOKUP = paths.postcode_lookup
 
 
 def main():
-    lsoa_lookup_df = pl.read_csv(LSOA_LOOKUP)
-    postcode_lookup_df = pl.read_csv(POSTCODE_LOOKUP)
+    lsoa_lookup_df = pl.scan_csv(LSOA_LOOKUP)
+    postcode_lookup_df = pl.scan_csv(POSTCODE_LOOKUP)
 
-    connectivity_df = pl.read_csv(CONNECTIVITY_FILE)
-    overcrowding_df = pl.read_csv(OVERCROWDING_FILE)
-    broadband_df = pl.read_csv(BROADBAND_FILE, null_values="#N/A")
+    connectivity_df = pl.scan_csv(CONNECTIVITY_FILE)
+    overcrowding_df = pl.scan_csv(OVERCROWDING_FILE)
+    broadband_df = pl.scan_csv(BROADBAND_FILE, null_values="#N/A")
 
     connectivity_df = lsoa_lookup_df.join(
         other=connectivity_df,
@@ -26,6 +26,7 @@ def main():
         left_on="lsoa_code",
         right_on="LSOA21CD",
     ).select(
+        pl.col("lsoa_code"),
         pl.exclude(
             [
                 "lsoa_code",
@@ -39,7 +40,7 @@ def main():
         .name.suffix("_rank"),
     )
 
-    overcrowding_joined_df = (
+    overcrowding_df = (
         lsoa_lookup_df.join(
             other=overcrowding_df,
             how="inner",
@@ -66,6 +67,12 @@ def main():
             on="Occupancy rating for bedrooms (6 categories)",
             index="lsoa_code",
             values="rate",
+            on_columns=(
+                [
+                    "Occupancy rating of bedrooms: -1",
+                    "Occupancy rating of bedrooms: -2 or less",
+                ]
+            ),
         )
         .select(
             pl.col("lsoa_code"),
@@ -103,12 +110,15 @@ def main():
         .select(cs.all(), cs.starts_with("bba").rank(descending=False).name.suffix("_rank"))
     )
 
-    # # print("connectivity df")
-    # print(connectivity_df.head())
-    # print("overcrowding df")
-    print(overcrowding_joined_df.head(25))
-    # print("broadband df")
-    # print(broadband_df.head())
+    combined_df = (
+        connectivity_df.join(other=overcrowding_df, how="inner", on="lsoa_code", validate="1:1")
+        .join(other=broadband_df, how="inner", on="lsoa_code", validate="1:1")
+        .collect()
+    )
+
+    combined_df.write_csv("data/output.csv")
+
+    print(combined_df.head(20))
 
 
 if __name__ == "__main__":
