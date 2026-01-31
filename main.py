@@ -28,14 +28,6 @@ def main():
     ).select(
         pl.exclude(
             [
-                "lsoa_name",
-                "msoa_code",
-                "ward_code",
-                "local_authority_code",
-            ]
-        ),
-        pl.exclude(
-            [
                 "lsoa_code",
                 "lsoa_name",
                 "msoa_code",
@@ -43,33 +35,80 @@ def main():
                 "local_authority_code",
             ]
         )
-        .rank(descending=True)
+        .rank(descending=False)
         .name.suffix("_rank"),
     )
 
-    overcrowding_joined_df = lsoa_lookup_df.join(
-        other=overcrowding_df,
-        how="inner",
-        left_on="lsoa_code",
-        right_on="Lower layer Super Output Areas Code",
+    overcrowding_joined_df = (
+        lsoa_lookup_df.join(
+            other=overcrowding_df,
+            how="inner",
+            left_on="lsoa_code",
+            right_on="Lower layer Super Output Areas Code",
+        )
+        .select(
+            pl.exclude(
+                [
+                    "Lower layer Super Output Areas",
+                    "lsoa_name",
+                    "msoa_code",
+                    "ward_code",
+                    "local_authority_code",
+                ]
+            ),
+            pl.col("Observation").sum().over("lsoa_code").alias("total"),
+        )
+        .select(
+            pl.all(),
+            (pl.col("Observation") / pl.col("total")).alias("rate"),
+        )
+        .pivot(
+            on="Occupancy rating for bedrooms (6 categories)",
+            index="lsoa_code",
+            values="rate",
+        )
+        .select(
+            pl.col("lsoa_code"),
+            cs.starts_with("O")
+            .name.replace(
+                "Occupancy rating of bedrooms: ",
+                "",
+                literal=True,
+            )
+            .name.replace(" ", "_", literal=True)
+            .name.suffix("_rate"),
+        )
+        .select(
+            pl.col("lsoa_code"),
+            (cs.starts_with("-1") + cs.starts_with("-2")).alias("overcrowding_rate"),
+        )
+        .select(cs.all(), pl.col("overcrowding_rate").rank(descending=True).name.suffix("_rank"))
     )
 
     broadband_df = (
         postcode_lookup_df.join(
-            other=broadband_df, how="inner", left_on="oa11cd", right_on="oa11cd"
+            other=broadband_df,
+            how="inner",
+            left_on="oa11cd",
+            right_on="oa11cd",
         )
-        .join(other=lsoa_lookup_df, how="inner", left_on="lsoa11nm", right_on="lsoa_name")
+        .join(
+            other=lsoa_lookup_df,
+            how="inner",
+            left_on="lsoa11nm",
+            right_on="lsoa_name",
+        )
         .group_by("lsoa_code")
         .agg(cs.starts_with("bba").mean().name.suffix("_mean"))
-        .select(cs.all(), cs.starts_with("bba").rank().name.suffix("_rank"))
+        .select(cs.all(), cs.starts_with("bba").rank(descending=False).name.suffix("_rank"))
     )
 
-    print("connectivity df")
-    print(connectivity_df.head())
-    print("overcrowding df")
-    print(overcrowding_joined_df.head())
-    print("broadband df")
-    print(broadband_df.head())
+    # # print("connectivity df")
+    # print(connectivity_df.head())
+    # print("overcrowding df")
+    print(overcrowding_joined_df.head(25))
+    # print("broadband df")
+    # print(broadband_df.head())
 
 
 if __name__ == "__main__":
