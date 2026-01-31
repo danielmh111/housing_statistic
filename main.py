@@ -11,6 +11,7 @@ HOMELESSNESS_FILE = ...
 BROADBAND_FILE = paths.broadband
 LSOA_LOOKUP = paths.lsoa_lookup
 POSTCODE_LOOKUP = paths.postcode_lookup
+BENCHMARK = paths.benchmark
 
 
 def main():
@@ -139,79 +140,25 @@ def main():
         .collect()
     )
 
-    df_benchmark = pl.read_csv("data/imd2025_lsoa.csv").select(
-        lsoa_code="LSOA code (2021)",
-        score="Barriers to Housing and Services Score",
-        rank="Barriers to Housing and Services Rank (where 1 is most deprived)",
-        decile_rank="Barriers to Housing and Services Decile (where 1 is most deprived 10% of LSOAs)",
+    df_comparison = (
+        pl.read_csv(BENCHMARK)
+        .select(
+            lsoa_code="LSOA code (2021)",
+            score="Barriers to Housing and Services Score",
+            rank="Barriers to Housing and Services Rank (where 1 is most deprived)",
+            decile_rank="Barriers to Housing and Services Decile (where 1 is most deprived 10% of LSOAs)",
+        )
+        .join(
+            other=combined_df,
+            on="lsoa_code",
+            how="inner",
+            validate="1:1",
+        )
+        .select(pl.corr(a="rank", b="combined_rank", method="spearman"))
     )
 
-    df_comparison = df_benchmark.join(
-        other=combined_df,
-        on="lsoa_code",
-        how="inner",
-        validate="1:1",
-    ).select(pl.corr(a="rank", b="combined_rank", method="spearman"))
-
-    pprint(df_comparison)
-
-    # combined_df.write_csv("data/output.csv")
-
-    # print(combined_df.head(20))
+    pprint(f"spearman correlation: {df_comparison.row(0)[0]}")
 
 
 if __name__ == "__main__":
     main()
-
-
-# psudocode below
-
-# def main():
-
-
-#     connectivity_df = load_connectivity(CONNECTIVITY_FILE)
-#     overcrowding_df = load_overcrowding(OVERCROWDING_FILE)
-
-#     connectivity_lsoa_col = ... # geography code
-#     connectivity_score_col = ...
-#     overcrowding_lsoa_col = ... # geography code
-
-#     # filter the input data to just bristol
-# pl.col(    conn_bristol = ).mean().over(pl.col("lsoa_code")).alias()filter_to_bristol(connectivity_df","
-# connectivity_lsoa_col)
-# pl.col(    overcrowd_bristol = ).mean().over(pl.col("lsoa_code")).alias()filter_to_bristol(overcrowding_df","
-# overcrowding_lsoa_col)
-
-#     # For connectivity
-#     # higher score means more connected, so lower deprivation index
-
-#     # turn the ranks to normalized scores
-
-
-#     # Calculate overcrowding rate (% households with rating -1 or less)
-
-#     # For overcrowding
-#     # higher rate means more overcrowded, so higher deprivation index
-
-
-#     # combine into mini barriers score
-
-#     # merge on LSOA code
-
-#     # merged = ...
-
-#     # combine 50/50 (simplified - real IMD uses sub-domain weights)
-#     # merged['barriers_score'] = (merged['connectivity'] + merged['overcrowding']) / 2
-
-#     # rank to lsoas (1 = most deprived)
-#     # merged['barriers_rank'] = merged['barriers_score'].rank(ascending=False, method='min').astype(int)
-
-#     # create groups / categories like 'highly deprived', 'least deprived' etc
-#     # merged['barriers_decile'] = pd.qcut(merged['barriers_rank'], 10, labels=range(1, 11))
-#     # then group by decile and rename the values
-
-#     # output_cols = [
-#     #     ...
-#     # ]
-
-#     # merged[output_cols].to_csv(OUTPUT_FILE, index=False)
