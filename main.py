@@ -130,18 +130,20 @@ def main():
         .select(
             pl.col("lsoa_code"),
             (
-                pl.col("overall_connectivity_rank")
-                + pl.col("overcrowding_rate_rank")
-                + pl.col("mean_download_speed_rank") / 3.0
+                (
+                    pl.col("overall_connectivity_rank")
+                    + pl.col("overcrowding_rate_rank")
+                    + pl.col("mean_download_speed_rank")
+                )
+                / 3.0
             )
             .rank(descending=False)
             .alias("combined_rank"),
         )
-        .collect()
     )
 
     df_comparison = (
-        pl.read_csv(BENCHMARK)
+        pl.scan_csv(BENCHMARK)
         .select(
             lsoa_code="LSOA code (2021)",
             score="Barriers to Housing and Services Score",
@@ -157,7 +159,7 @@ def main():
         .select(pl.corr(a="rank", b="combined_rank", method="spearman"))
     )
 
-    pprint(f"spearman correlation: {df_comparison.row(0)[0]}")
+    pprint(f"spearman correlation: {df_comparison.collect().row(0)[0]}")
 
 
 if __name__ == "__main__":
