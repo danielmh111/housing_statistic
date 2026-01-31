@@ -4,7 +4,12 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
-dependencies = ["pandas>=3.0.0", "polars>=1.37.1", "project-paths>=1.1.1"]
+dependencies = [
+    "pandas>=3.0.0",
+    "polars>=1.37.1",
+    "project-paths>=1.1.1",
+    "rich>=14.3.1",
+]
 
 [tool.project-paths]
 data = "./data"

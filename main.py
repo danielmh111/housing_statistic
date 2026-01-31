@@ -1,6 +1,7 @@
 import polars as pl
 import polars.selectors as cs
 from project_paths import paths
+from rich.pretty import pprint
 
 OVERCROWDING_FILE = paths.overcrowding
 CONNECTIVITY_FILE = paths.connectivity
@@ -89,7 +90,10 @@ def main():
             pl.col("lsoa_code"),
             (cs.starts_with("-1") + cs.starts_with("-2")).alias("overcrowding_rate"),
         )
-        .select(cs.all(), pl.col("overcrowding_rate").rank(descending=True).name.suffix("_rank"))
+        .select(
+            cs.all(),
+            pl.col("overcrowding_rate").rank(descending=True).name.suffix("_rank"),
+        )
     )
 
     broadband_df = (
@@ -107,18 +111,53 @@ def main():
         )
         .group_by("lsoa_code")
         .agg(cs.starts_with("bba").mean().name.suffix("_mean"))
-        .select(cs.all(), cs.starts_with("bba").rank(descending=False).name.suffix("_rank"))
+        .select(
+            cs.all(),
+            cs.starts_with("bba").rank(descending=False).name.suffix("_rank"),
+        )
     )
 
     combined_df = (
         connectivity_df.join(other=overcrowding_df, how="inner", on="lsoa_code", validate="1:1")
         .join(other=broadband_df, how="inner", on="lsoa_code", validate="1:1")
+        .select(
+            pl.col("lsoa_code"),
+            pl.col("Overall_rank").alias("overall_connectivity_rank"),
+            pl.col("overcrowding_rate_rank"),
+            pl.col("bba225_dow_mean_rank").alias("mean_download_speed_rank"),  # just picking one
+        )
+        .select(
+            pl.col("lsoa_code"),
+            (
+                pl.col("overall_connectivity_rank")
+                + pl.col("overcrowding_rate_rank")
+                + pl.col("mean_download_speed_rank") / 3.0
+            )
+            .rank(descending=False)
+            .alias("combined_rank"),
+        )
         .collect()
     )
 
-    combined_df.write_csv("data/output.csv")
+    df_benchmark = pl.read_csv("data/imd2025_lsoa.csv").select(
+        lsoa_code="LSOA code (2021)",
+        score="Barriers to Housing and Services Score",
+        rank="Barriers to Housing and Services Rank (where 1 is most deprived)",
+        decile_rank="Barriers to Housing and Services Decile (where 1 is most deprived 10% of LSOAs)",
+    )
 
-    print(combined_df.head(20))
+    df_comparison = df_benchmark.join(
+        other=combined_df,
+        on="lsoa_code",
+        how="inner",
+        validate="1:1",
+    ).select(pl.corr(a="rank", b="combined_rank", method="spearman"))
+
+    pprint(df_comparison)
+
+    # combined_df.write_csv("data/output.csv")
+
+    # print(combined_df.head(20))
 
 
 if __name__ == "__main__":
