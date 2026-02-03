@@ -140,6 +140,16 @@ def main():
             .rank(descending=False)
             .alias("combined_rank"),
         )
+        .select(
+            pl.all(),
+            # pl.col("combined_rank").quantile(0.1).alias("combined_rank_decile"),
+            (10 - pl.col("combined_rank").qcut(10).to_physical().cast(pl.Int32)).alias(
+                "combined_rank_decile"
+            ),
+            (((pl.col("combined_rank") - 1) * 10 // pl.col("combined_rank").len()) + 1)
+            .cast(pl.Int32)
+            .alias("alt_combined_rank_decile"),
+        )
     )
 
     df_comparison = (
@@ -156,10 +166,21 @@ def main():
             how="inner",
             validate="1:1",
         )
-        .select(pl.corr(a="rank", b="combined_rank", method="spearman"))
-    )
+        .select(
+            pl.corr(a="rank", b="combined_rank", method="spearman"),
+            pl.corr(a="decile_rank", b="combined_rank_decile", method="spearman"),
+            pl.corr(a="decile_rank", b="alt_combined_rank_decile", method="spearman").alias(
+                "alt_decile_corr"
+            ),
+        )
+    ).collect()
 
-    pprint(f"spearman correlation: {df_comparison.collect().row(0)[0]}")
+    print(
+        f"spearman correlation of ranks: {df_comparison.row(0)[0]}",
+        f"spearman correlation of rank deciles: {df_comparison.row(0)[1]}",
+        f"spearman correlation of alt deciles {df_comparison.row(0)[2]}",
+        sep="\n",
+    )
 
 
 if __name__ == "__main__":
