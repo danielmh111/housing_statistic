@@ -166,7 +166,12 @@ def main():
             how="inner",
             validate="1:1",
         )
-        .select(
+    )
+
+    df_comparison.sink_csv("housing_domain_comparison.csv")
+
+    df_comparison = (
+        df_comparison.select(
             pl.corr(a="rank", b="combined_rank", method="spearman"),
             pl.corr(a="decile_rank", b="combined_rank_decile", method="spearman"),
             pl.corr(a="decile_rank", b="alt_combined_rank_decile", method="spearman").alias(
